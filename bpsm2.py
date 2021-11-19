@@ -80,3 +80,37 @@ goon = input(
 if goon != 'y' and goon != 'yes':  # terminate by user
     print('Pipeline terminate!')
     os.exit(0)
+
+################################################################
+# Part 3: Analysis
+################################################################
+
+## Align sequences
+print('Aligning sequences ...')
+# build path for MSA result
+align = '{}/protein-sequences-align.fa'.format(workspace)
+# build clustalo arguments
+args = ['clustalo', '-i', fasta, '-o', align, '-v']
+# call clustalo
+subprocess.check_call(args)
+print('Alignment result saved in: "{}"'.format(align))
+
+## Ask if user wants to scale down sequences
+print(
+    'Note: analysis conservation for too many sequences will take a long time.'
+)
+while True:
+    num = input(
+        'Please input a number of sequences you want to continue analysis:(Enter directly to use all)'
+    )
+    if num:  # user input
+        try:  # try to convert user input as int
+            num = int(num)
+        except ValueError:  # user input is not numeric
+            print('Invalid value as a number "{}"'.format(num))
+            continue
+    else:  # handle empty input, set stop as download sequences number
+        num = stop
+    break
+
+
