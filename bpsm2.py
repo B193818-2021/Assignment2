@@ -176,3 +176,89 @@ else:  # user wants to scale down sequences
         # call pullseq
         subprocess.check_call(args, stdout=stdout)
     print('Analysis sequence saved in: "{}"'.format(analysis_seq))
+## plotcon
+# ask for window size
+while True:
+    ws = input('Please input the window size:')
+    try:  # make sure user input is numeric
+        ws = int(ws)
+    except ValueError:  # user input is not numeric, handel empty input, too
+        print('Invalid window size: "{}"'.format(ws))
+    print('Using window size: "{}"'.format(ws))
+    break
+# build plotcon arguments
+args = [
+    'plotcon', '-graph', 'svg', '-winsize',
+    str(ws), '-sequence',
+    os.path.abspath(analysis_seq)
+]
+# call plotcon and capture stdout
+stdout = subprocess.check_output(args, cwd=workspace).decode()
+# plotcon can not set output path option
+# so we need to extract output path from stdout
+# using regex extract the output path for the svg format image
+outsvg = '{}/{}'.format(workspace, re.search(r'\S+\.svg', stdout).group())
+print('Plotcon output image saved in: "{}"'.format(outsvg))
+
+## Scan motif
+print('Scaning motif ...')
+# patmatmotifs only work for separate fasta file
+# so we need to separate protein sequence in a lot of files
+# make directory to save fasta files
+motif_dir = '{}/motif'.format(workspace)
+os.mkdir(motif_dir)
+# regex use to match fasta sequence header and extract sequence name
+seq_name_re = re.compile(r'^>(\S+)\s.*')
+# regex to extract motif name
+motif_re = re.compile(r'Motif = (\S+)')
+# set use to collect motif names
+motifs = set()
+# read downloaded protein sequences
+with open(fasta, 'r') as f:
+    seq_line = f.readline()  # read first line
+    # this should be sequence header
+    seq_name_match = seq_name_re.match(seq_line)
+    while seq_line:  # loop through each sequence
+        # sequence name line has been read in
+        seq_name = seq_name_match.group(1)  # extract sequence name
+        # build path for this sequence
+        seq_path = '{}/{}.fa'.format(motif_dir, seq_name)
+        # write sequence contents to a new separate fasta file
+        with open(seq_path, 'w') as seq_file:
+            # output sequence header line first
+            seq_file.write(seq_line)
+            # keep going through this sequence content, until we hit next sequence header
+            while True:
+                seq_line = f.readline()  # read next line
+                if seq_line:  # read something, file is not ending
+                    # check if we hit next sequence header
+                    seq_name_match = seq_name_re.match(seq_line)
+                    if seq_name_match:  # hit next sequence header, end of this sequence
+                        break
+                    else:
+                        seq_file.write(seq_line)
+                else:  # read nothing, file is ending, end reading
+                    break
+        # sequence saved in a separate fasta file, next step
+        # build path for motif scan result
+        motif_path = '{}/{}.patmatmotifs'.format(motif_dir, seq_name)
+        # build patmatmotifs arguments
+        args = ['patmatmotifs', '-sequence', seq_path, '-outfile', motif_path]
+        # call patmatmotifs
+        subprocess.check_call(args)
+        # read patmatmotifs
+        with open(motif_path) as motif_file:
+            for motif_line in motif_file:  # loop through the file
+                # match and extract motifs
+                motif_match = motif_re.match(motif_line)
+                if motif_match:  # found the motif name
+                    # add motif name to collection
+                    motifs.add(motif_match.group(1))
+print('Found {} motif:'.format(len(motifs)))
+# output all unique motifs
+motif = '{}/protein-sequences-motifs.txt'.format(workspace)
+with open(motif, 'w') as f:
+    for m in motifs:
+        print(m)  # report to screen
+        f.write('{}\n'.format(motif))  # write to file
+print('Motif list saved to: {}'.format(motif))
