@@ -262,3 +262,18 @@ with open(motif, 'w') as f:
         print(m)  # report to screen
         f.write('{}\n'.format(motif))  # write to file
 print('Motif list saved to: {}'.format(motif))
+
+## Analysis codon frequencies
+print('Counting codon frequencies ...')
+# build path for codon frequencies output
+codon = '{}/protein-sequences-codon.comp'.format(workspace)
+# build compseq arguments
+# count word as 3 to count codon
+args = [
+    'compseq', '-sequence', fasta, '-word', '3', '-nozero', '-outfile', codon
+]
+# call compseq
+subprocess.check_call(args)
+print('Codon frequencies saved to: {}'.format(codon))
+
+print('Pipeline finished!')
